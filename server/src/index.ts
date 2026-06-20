@@ -3,29 +3,32 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import mongoose from 'mongoose'
 import enquiryRouter from './routes/enquiry'
+import { connectDatabase, isDatabaseConnected } from './config/database'
 
 dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/kidrove'
 
 app.use(cors())
 app.use(express.json())
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.json({
+    status: 'ok',
+    mongoConnected: isDatabaseConnected(),
+    database: mongoose.connection.db?.databaseName ?? null,
+    timestamp: new Date().toISOString(),
+  })
 })
 
 app.use('/api/enquiry', enquiryRouter)
 
 async function startServer() {
-  try {
-    await mongoose.connect(MONGODB_URI)
-    console.log('Connected to MongoDB')
-  } catch (error) {
-    console.warn('MongoDB connection failed — running without database persistence')
-    console.warn('Set MONGODB_URI in .env to enable database storage')
+  const connected = await connectDatabase()
+
+  if (!connected) {
+    console.warn('Running without database — enquiries will fail to save until MongoDB is connected')
   }
 
   app.listen(PORT, () => {
