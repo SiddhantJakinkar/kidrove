@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Loader2, CheckCircle2 } from 'lucide-react'
 import { fadeUp } from '../utils/animations'
 import { validateForm, hasErrors, type FormData, type FormErrors } from '../utils/validation'
+import { getApiUrl, parseJsonResponse } from '../utils/api'
 import { workshopDetails } from '../data/workshop'
 
 export default function RegistrationForm() {
@@ -35,12 +36,19 @@ export default function RegistrationForm() {
     setErrors((prev) => ({ ...prev, [name]: fieldErrors[name as keyof FormErrors] }))
   }
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setTouched({ name: true, email: true, phone: true })
     setSubmitError('')
 
-    const validationErrors = validateForm(formData)
+    const form = e.currentTarget
+    const submitData: FormData = {
+      name: (form.elements.namedItem('name') as HTMLInputElement).value,
+      email: (form.elements.namedItem('email') as HTMLInputElement).value,
+      phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
+    }
+
+    const validationErrors = validateForm(submitData)
     setErrors(validationErrors)
 
     if (hasErrors(validationErrors)) return
@@ -48,17 +56,17 @@ export default function RegistrationForm() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/enquiry', {
+      const response = await fetch(getApiUrl('/api/enquiry'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-          phone: formData.phone.replace(/\D/g, ''),
+          name: submitData.name.trim(),
+          email: submitData.email.trim(),
+          phone: submitData.phone.replace(/\D/g, ''),
         }),
       })
 
-      const data = await response.json()
+      const data = await parseJsonResponse<{ success: boolean; message?: string }>(response)
 
       if (!response.ok) {
         throw new Error(data.message || 'Something went wrong. Please try again.')
