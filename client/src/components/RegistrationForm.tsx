@@ -55,8 +55,19 @@ export default function RegistrationForm() {
 
     setIsSubmitting(true)
 
+    let apiUrl: string
     try {
-      const response = await fetch(getApiUrl('/api/enquiry'), {
+      apiUrl = getApiUrl('/api/enquiry')
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : 'API URL is not configured.',
+      )
+      setIsSubmitting(false)
+      return
+    }
+
+    try {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         mode: 'cors',
         headers: { 'Content-Type': 'application/json' },
@@ -78,10 +89,10 @@ export default function RegistrationForm() {
       setTouched({})
       setErrors({})
     } catch (err) {
-      if (err instanceof TypeError && err.message === 'Failed to fetch') {
-        setSubmitError(
-          'Could not connect to server. Render may be waking up — wait 30 seconds and try again.',
-        )
+      if (err instanceof Error && err.message.includes('VITE_API_URL')) {
+        setSubmitError('Form is not configured for production. Contact the site administrator.')
+      } else if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        setSubmitError('Could not connect to server. Please try again in a moment.')
       } else {
         setSubmitError(err instanceof Error ? err.message : 'Failed to submit enquiry')
       }

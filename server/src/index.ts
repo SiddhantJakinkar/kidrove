@@ -9,28 +9,50 @@ dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
+const isProduction = process.env.NODE_ENV === 'production'
 
-const allowedOrigins = new Set([
-  'https://kidrove-one.vercel.app',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
-])
+function getAllowedOrigins(): Set<string> {
+  const origins = new Set<string>()
+
+  if (process.env.FRONTEND_URL) {
+    origins.add(process.env.FRONTEND_URL.replace(/\/$/, ''))
+  }
+
+  if (process.env.ALLOWED_ORIGINS) {
+    process.env.ALLOWED_ORIGINS.split(',')
+      .map((origin) => origin.trim().replace(/\/$/, ''))
+      .filter(Boolean)
+      .forEach((origin) => origins.add(origin))
+  }
+
+  if (!isProduction) {
+    origins.add('http://localhost:5173')
+    origins.add('http://127.0.0.1:5173')
+  }
+
+  return origins
+}
+
+const allowedOrigins = getAllowedOrigins()
+
+if (isProduction && allowedOrigins.size === 0) {
+  console.warn('FRONTEND_URL is not set — browser requests from your frontend may be blocked by CORS')
+}
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (
-        !origin ||
-        allowedOrigins.has(origin) ||
-        origin.endsWith('.vercel.app') ||
-        origin.startsWith('http://localhost:')
-      ) {
+      if (!origin) {
         callback(null, true)
         return
       }
 
-      callback(null, false)
+      if (allowedOrigins.has(origin)) {
+        callback(null, true)
+        return
+      }
+
+      callback(new Error('Not allowed by CORS'))
     },
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type'],
