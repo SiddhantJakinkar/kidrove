@@ -9,12 +9,31 @@ dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
-const FRONTEND_URL = process.env.FRONTEND_URL
+
+const allowedOrigins = new Set([
+  'https://kidrove-one.vercel.app',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+])
 
 app.use(
   cors({
-    origin: FRONTEND_URL ? [FRONTEND_URL] : true,
+    origin(origin, callback) {
+      if (
+        !origin ||
+        allowedOrigins.has(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.startsWith('http://localhost:')
+      ) {
+        callback(null, true)
+        return
+      }
+
+      callback(null, false)
+    },
     methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
   }),
 )
 app.use(express.json())

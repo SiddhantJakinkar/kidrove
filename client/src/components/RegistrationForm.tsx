@@ -58,6 +58,7 @@ export default function RegistrationForm() {
     try {
       const response = await fetch(getApiUrl('/api/enquiry'), {
         method: 'POST',
+        mode: 'cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: submitData.name.trim(),
@@ -77,7 +78,13 @@ export default function RegistrationForm() {
       setTouched({})
       setErrors({})
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to submit enquiry')
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        setSubmitError(
+          'Could not connect to server. Render may be waking up — wait 30 seconds and try again.',
+        )
+      } else {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to submit enquiry')
+      }
     } finally {
       setIsSubmitting(false)
     }
